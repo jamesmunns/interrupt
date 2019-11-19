@@ -15,12 +15,14 @@ At one point or another when working with an ARM Cortex-M MCU, you will hit some
 
 <!-- excerpt start -->
 
-In this article we will demystify how to determine what went wrong when an ARM Cortex-M fault occurs. We will walk step by step through what the registers to inspect and what the values actually mean. We will discuss debug tricks that can be used for some of the most challenging classes of HardFaults, how how to automate the fault analysis, and how to recover from a fault without rebooting the system. Finally, we will apply what we have learned in the article and walk through a couple practical examples.
+In this article, we will demystify how to determine what went wrong when an ARM Cortex-M fault occurs. We will walk step by step through what the registers to inspect and what the values actually mean. We will discuss debug tricks that can be used for some of the most challenging classes of HardFaults, how to automate the fault analysis, and how to recover from a fault without rebooting the system. Finally, we will apply what we have learned in the article and walk through a couple practical examples.
 
 <!-- excerpt end -->
 
 _Like Interrupt? [Subscribe](http://eepurl.com/gpRedv) to get our latest
 posts straight to your mailbox_
+
+{:.no_toc}
 
 ## Table of Contents
 
@@ -109,7 +111,7 @@ When debugging an imprecise error, you will want to inspect the code around the 
 
 #### Auxiliary Control Register (ACTLR) - 0xE000E008
 
-This register allows for some hardware optimizations / features to be disabled typically at the cost of overall performance or interrupt latency. The exact configuration options available are specific to the specific Cortex-M implementation being used.
+This register allows for some hardware optimizations or features to be disabled typically at the cost of overall performance or interrupt latency. The exact configuration options available are specific to the specific Cortex-M implementation being used.
 
 {: #cortex-m3-m4-debug-trick}
 For the Cortex M3 & Cortex M4 **only**, there is a trick to make all `IMPRECISE` accesses `PRECISE` by disabling any write buffering. This can be done by setting bit 1 (`DISDEFWBUF`) of the register to 1.
@@ -142,9 +144,9 @@ where,
 - `MLSPERR` & `MSTKERR` - Indicates that a MemManage fault occurred during lazy state preservation or exception entry, respectively. For example, this could happen if an MPU region is being used to detect [stack overflows](https://interrupt.memfault.com/blog/fix-bugs-and-secure-firmware-with-the-mpu#catch-stack-overflows-with-the-mpu).
 - `MUNSTKERR` - Indicates that a fault occurred while returning from an exception
 - `DACCVIOL` - Indicates that a data access triggered the MemManage fault.
-- `IACCVIOL` - Indicates that an attempt to execute an instruction triggered a MPU or Execute Never (XN) fault. We'll explore an example [below](#bad-pc-mpu-fault).
+- `IACCVIOL` - Indicates that an attempt to execute an instruction triggered an MPU or Execute Never (XN) fault. We'll explore an example [below](#bad-pc-mpu-fault).
 
-## HardFault Status Register (HFSR) - 0xE000ED2C
+### HardFault Status Register (HFSR) - 0xE000ED2C
 
 This registers explains the reason a HardFault exception was triggered.
 
@@ -185,10 +187,12 @@ int illegal_instruction_execution(void) {
 ```
 (gdb) p/x $lr
 $4 = 0xfffffffd
+
 # psp was active prior to exception if bit 2 is set
 # otherwise, the msp was active
 (gdb) p/x $lr&(1<<2)
 $5 = 0x4
+
 # First eight values on stack will always be:
 # r0, r1, r2, r3, r12, LR, pc, xPSR
 (gdb) p/a *(uint32_t[8] *)$psp
@@ -339,10 +343,10 @@ This approach has a couple notable limitations:
 
 #### Debugger Plugins
 
-Many embedded IDEs expose a system view that can be used to look at registers. The registers will often be decoded into human readable descriptions. These implementations typically leverage the CMSIS _System View Description_ (**SVD**) format[^4], a standardized XML file format for describing the memory mapped registers in an ARM MCU. Most silicon vendors expose this information on their own website, ARMs website[^5], or provide the files upon request.
+Many embedded IDEs expose a system view that can be used to look at registers. The registers will often be decoded into human readable descriptions. These implementations typically leverage the CMSIS _System View Description_ (**SVD**) format[^4], a standardized XML file format for describing the memory mapped registers in an ARM MCU. Most silicon vendors expose this information on their own website, ARM's website[^5], or provide the files upon request.
 
 {: #pycortex-svd-gdb-setup}
-You can even load these files in GDB using PyCortexMDebug[^6], a [gdb python](https://interrupt.memfault.com/blog/automate-debugging-with-gdb-python-api#getting-started-with-gdb-python) script .
+You can even load these files in GDB using PyCortexMDebug[^6], a [GDB python](https://interrupt.memfault.com/blog/automate-debugging-with-gdb-python-api#getting-started-with-gdb-python) script .
 
 To use the utility, all you need to do is update your `.gdbinit` to use PyPi packages from your environment (instructions [here](https://interrupt.memfault.com/blog/using-pypi-packages-with-GDB#3-append-syspath-to-gdbs-python)) and then run:
 
@@ -398,7 +402,7 @@ One approach is to simply try and reproduce the issue on site. This is a guessin
 
 Another strategy is to log the fault register and stack values to persistent storage and periocially collect or push the error logs. On the server side, the register values can be decoded and addresses can be symbolicated to try to root cause the crash.
 
-Alternatively an end-to-end firmware error analysis system, such as [Memfault](https://memfault.com/features/error-analysis.html?utm_source=interrupt&utm_medium=link&utm_campaign=cortex-m-faults), can be used to automatically collect, transport, deduplicate and surface the biggest issues in the field. Here is some example output from Memfault for the bad memory read example we will walk through [below](#bad-address-read-example):
+Alternatively, an end-to-end firmware error analysis system, such as [Memfault](https://memfault.com/features/error-analysis.html?utm_source=interrupt&utm_medium=link&utm_campaign=cortex-m-faults), can be used to automatically collect, transport, deduplicate and surface the biggest issues in the field. Here is some example output from Memfault for the bad memory read example we will walk through [below](#bad-address-read-example):
 
 ![](img/cortex-m-fault/memfault-fault-analyzer.png)
 
@@ -461,9 +465,11 @@ This winds up looking like:
   frame->xpsr = (1 << 24);
 ```
 
-You may recall from our [previous post](https://interrupt.memfault.com/blog/cortex-m-rtos-context-switching#context-state-stacking), fault handlers can work just like regular c functions so after these changes we will exit from `my_fault_handler_c` and start executing whatever is in `recover_from_task_fault`. We will walk through an example of this [below](#usage-fault-recovery-example).
+You may recall from the [RTOS Context Switching post](https://interrupt.memfault.com/blog/cortex-m-rtos-context-switching#context-state-stacking) that fault handlers can work just like regular C functions so after these changes we will exit from `my_fault_handler_c` and start executing whatever is in `recover_from_task_fault`. We will walk through an example of this [below](#usage-fault-recovery-example).
 
 ## Examples
+
+In the sections below we will walk through the analysis of a couple faults.
 
 For this setup we will use:
 
@@ -474,18 +480,16 @@ For this setup we will use:
 
 All the code can be found on the [Interrupt Github page](https://github.com/memfault/interrupt/tree/master/example/cortex-m-fault-debug) with more details in the `README` in the directory linked.
 
-In the sections below we will walk through the analysis of a couple faults.
-
 #### Setup
 
 Start a GDB Server:
 
 ```shell
-JLinkGDBServer  -if swd -device nRF52840_xxAA
+JLinkGDBServer -if swd -device nRF52840_xxAA
 ```
 
 {: #svd-usage-example}
-Follow the instructions [above](#pycortex-svd-gdb-setup) to setup support for reading SVD files from GDB, build, and flask the example app:
+Follow the instructions [above](#pycortex-svd-gdb-setup) to setup support for reading SVD files from GDB, build, and flash the example app:
 
 ```shell
 $ make
@@ -572,11 +576,11 @@ $1 = {
 
 We can clearly see that the executing instruction was `0xe0000000` and that the calling function was `prvQueuePingTask`.
 
-From the ARMv7-M reference manual[^9] we can find:
+From the ARMv7-M reference manual[^9] we find:
 
 > The MPU is restricted in how it can change the default memory map attributes associated with System space, that is, for addresses 0xE0000000 and higher. System space is always marked as XN, Execute Never.
 
-So the fault registers didn't lie to us, it does make sense that we hit a memory management fault!
+So the fault registers didn't lie to us, and it does make sense that we hit a memory management fault!
 
 {: #bad-address-read-example}
 
@@ -918,7 +922,7 @@ Taking this knowledge into account, let's examine the stack frame:
 $40 = (sContextStateFrame *) 0x1fffffe0
 ```
 
-Interesting, if we look up the memory map of the NRF52[^10], we will find that RAM starts at `0x20000000`. Our stack pointer location, `0x1fffffe0` is right below that in an undefined memory region. This must be why we faulted! We see that the stack pointer is 32 bytes below RAM, which matches the size of `sContextStateFrame`. This unfortunately means none of the values stacked will be valid since all stores were issued to a non-existent address space!
+Interestingly, if we look up the memory map of the NRF52[^10], we will find that RAM starts at `0x20000000`. Our stack pointer location, `0x1fffffe0` is right below that in an undefined memory region. This must be why we faulted! We see that the stack pointer is 32 bytes below RAM, which matches the size of `sContextStateFrame`. This unfortunately means none of the values stacked will be valid since all stores were issued to a non-existent address space!
 
 We can manually walk up the stack to get some clues:
 
@@ -945,7 +949,7 @@ We can manually walk up the stack to get some clues:
 
 It looks like the RAM has a pattern of sequentially increasing values _and_ that the RAM addresses map to different variables in our code (i.e `pxCurrentTCB`). This suggests we overflowed the stack we were using and started to clobber RAM in the system until we ran off the end of RAM!
 
-> TIP: To catch this type of failure sooner consider using a [MPU Region](https://interrupt.memfault.com/blog/fix-bugs-and-secure-firmware-with-the-mpu#catch-stack-overflows-with-the-mpu)
+> TIP: To catch this type of failure sooner consider using an [MPU Region](https://interrupt.memfault.com/blog/fix-bugs-and-secure-firmware-with-the-mpu#catch-stack-overflows-with-the-mpu)
 
 Since the crash is reproducible, let's leverage a watchpoint and see if we can capture the stack corruption in action! Let's add a watchpoint for any access near the bottom of RAM, `0x2000000c`:
 
