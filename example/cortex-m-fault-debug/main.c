@@ -93,8 +93,8 @@ void bad_addr_double_word_write(void) {
 }
 
 void access_disabled_coprocessor(void) {
-  // FreeRTOS will automatically enable the FPU co-processor. Let's disable it for
-  // the purposes of this example
+  // FreeRTOS will automatically enable the FPU co-processor.
+  // Let's disable it for the purposes of this example
   __asm volatile(
       "ldr r0, =0xE000ED88 \n"
       "mov r1, #0 \n"

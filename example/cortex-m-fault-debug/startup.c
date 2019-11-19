@@ -124,7 +124,7 @@ void my_fault_handler_c(sContextStateFrame *frame) {
   *cfsr |= *cfsr;
   // the instruction we will return to when we exit from the exception
   frame->return_address = (uint32_t)recover_from_task_fault;
-  // the function we are returning too should never branch
+  // the function we are returning to should never branch
   // so set lr to a pattern that would fault if it did
   frame->lr = 0xdeadbeef;
   // reset the psr state and only leave the
@@ -133,8 +133,6 @@ void my_fault_handler_c(sContextStateFrame *frame) {
 }
 
 static void HardFault_Handler(void) {
-  int (*bad_instruction)(void) = (void *)0xE0000000;
-  bad_instruction();
   HARDFAULT_HANDLING_ASM();
 }
 
